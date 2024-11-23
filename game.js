@@ -32,7 +32,8 @@ class Game {
         this.ctx = this.canvas.getContext('2d');
         this.peanutGroup = { x: 200, y: 300, particles: [] };  // 花生團
         this.sesameGroup = { x: 600, y: 300, particles: [] };  // 芝麻團
-        this.launchedPeanuts = [];  // 新增：正在移動中的花生
+        this.launchedPeanuts = [];  // 正在移動中的花生
+        this.totalPeanuts = 50;     // 總花生數量
         this.isGameOver = false;
 
         this.initializeParticles();
@@ -42,7 +43,7 @@ class Game {
 
     initializeParticles() {
         // 初始化花生團
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < this.totalPeanuts; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = Math.random() * 30;
             this.peanutGroup.particles.push(new Particle(
@@ -65,58 +66,80 @@ class Game {
     }
 
     handleClick(event) {
-        if (this.isGameOver || this.peanutGroup.particles.length === 0) return;
+        if (this.isGameOver) return;
 
-        // 發射5顆花生
-        const numPeanutsToLaunch = Math.min(5, this.peanutGroup.particles.length);
+        // 檢查是否還有可發射的花生
+        const availablePeanuts = this.peanutGroup.particles.filter(p => !p.isLaunched);
+        if (availablePeanuts.length === 0) return;
+
+        // 發射5顆花生（或剩餘的所有花生）
+        const numPeanutsToLaunch = Math.min(5, availablePeanuts.length);
         
         for (let i = 0; i < numPeanutsToLaunch; i++) {
-            // 從花生團移除花生
-            const peanut = this.peanutGroup.particles.pop();
+            const peanut = availablePeanuts[i];
+            peanut.isLaunched = true;
             
-            // 設定發射速度
+            // 設定發射速度和方向
             peanut.vx = 5 + Math.random() * 2;
             peanut.vy = -2 + Math.random() * 4;
-            peanut.isLaunched = true;
             
             // 加入到發射中的花生陣列
             this.launchedPeanuts.push(peanut);
+            
+            // 從花生團移除
+            const index = this.peanutGroup.particles.indexOf(peanut);
+            if (index > -1) {
+                this.peanutGroup.particles.splice(index, 1);
+            }
         }
     }
 
     checkCollisions() {
         const sesameCenter = this.sesameGroup;
         
-        // 檢查每個發射中的花生
         for (let i = this.launchedPeanuts.length - 1; i >= 0; i--) {
             const peanut = this.launchedPeanuts[i];
             
-            // 計算與芝麻團中心的距離
+            // 檢查是否超出畫布範圍
+            if (peanut.x < 0 || peanut.x > this.canvas.width || 
+                peanut.y < 0 || peanut.y > this.canvas.height) {
+                // 將花生送回花生團
+                peanut.isLaunched = false;
+                peanut.vx = 0;
+                peanut.vy = 0;
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 30;
+                peanut.x = this.peanutGroup.x + Math.cos(angle) * radius;
+                peanut.y = this.peanutGroup.y + Math.sin(angle) * radius;
+                
+                this.launchedPeanuts.splice(i, 1);
+                this.peanutGroup.particles.push(peanut);
+                continue;
+            }
+            
+            // 檢查是否進入芝麻團
             const dx = peanut.x - sesameCenter.x;
             const dy = peanut.y - sesameCenter.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
-            // 如果花生進入芝麻團範圍
             if (distance < 50) {
-                // 將花生加入芝麻團
                 peanut.isLaunched = false;
                 peanut.vx = 0;
                 peanut.vy = 0;
                 
-                // 給予一個隨機位置（在芝麻團內）
+                // 給予在芝麻團內的隨機位置
                 const angle = Math.random() * Math.PI * 2;
                 const radius = Math.random() * 40;
                 peanut.x = sesameCenter.x + Math.cos(angle) * radius;
                 peanut.y = sesameCenter.y + Math.sin(angle) * radius;
                 
-                // 從發射中移除，加入芝麻團
                 this.launchedPeanuts.splice(i, 1);
                 this.sesameGroup.particles.push(peanut);
             }
         }
 
-        // 檢查遊戲是否結束（所有花生都進入芝麻團）
-        if (this.peanutGroup.particles.length === 0 && this.launchedPeanuts.length === 0) {
+        // 檢查遊戲是否結束（所有花生都在芝麻團中）
+        if (this.sesameGroup.particles.filter(p => p.type === 'peanut').length === this.totalPeanuts) {
             this.isGameOver = true;
             setTimeout(() => alert('遊戲結束！花生和芝麻完美混合了！'), 100);
         }
