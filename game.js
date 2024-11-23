@@ -6,6 +6,7 @@ class Particle {
         this.radius = type === 'peanut' ? 4 : 2;
         this.vx = 0;
         this.vy = 0;
+        this.isLaunched = false;
     }
 
     draw(ctx) {
@@ -17,8 +18,11 @@ class Particle {
     }
 
     update() {
-        this.x += this.vx;
-        this.y += this.vy;
+        if (this.isLaunched) {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += 0.1;
+        }
     }
 }
 
@@ -59,11 +63,12 @@ class Game {
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
 
-        // 發射一些花生，現在會以固定角度直線移動
+        // 發射一些花生
         for (let i = 0; i < 10; i++) {
             const peanut = this.peanuts[i];
-            peanut.vx = 5; // 固定水平速度
-            peanut.vy = 0; // 不加入垂直速度，或可以設定小數值製造些微偏移
+            peanut.isLaunched = true;
+            peanut.vx = (Math.random() * 5) + 5;
+            peanut.vy = -5 + Math.random() * 2;
         }
     }
 
